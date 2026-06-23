@@ -1,0 +1,416 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Course Scheduling System Using Graph Coloring</title>
+    <link rel="stylesheet" href="jun.css">
+</head>
+
+<body>
+
+<h1>Course Scheduling System Using Graph Coloring</h1>
+
+<h2>Add Courses:</h2>
+<input type="text" id="courseName" placeholder="Course Name" required>
+<button onclick="addCourse()">Add Course</button>
+
+<h2>Add Conflicts:</h2>
+<input type="text" id="course1" placeholder="Course 1" required>
+<input type="text" id="course2" placeholder="Course 2" required>
+<button onclick="addConflict()">Add Conflict</button>
+
+<br><br>
+
+<button onclick="generateSchedule()">
+    Generate Schedule
+</button>
+
+<h2>Courses</h2>
+<ul id="courseList"></ul>
+
+<h2>Conflicts</h2>
+<ul id="conflictList"></ul>
+
+<h2>Schedule Result</h2>
+
+<table id="scheduleTable">
+    <tr>
+        <th>Course</th>
+        <th>Time Slot</th>
+    </tr>
+</table>
+
+<h2>Conflict Graph</h2>
+<p style="color: white; font-size: 20px; font-weight: bold;">Legend: </p>
+<div id="legend"></div>
+
+<canvas id="graphCanvas"
+        width="1300"
+        height="600"
+        style="border:1px solid white;">
+</canvas>
+
+<script>
+
+let courses = [];
+let conflicts = [];
+
+const slotColors = [
+    "red",
+    "blue",
+    "green",
+    "orange",
+    "yellow",
+    "purple",
+    "cyan",
+    "violet",
+    "pink",
+    "yellowgreen"
+];
+
+function addCourse(){
+
+    if(courses.length >= 100){
+        alert("Maximum of 100 courses reached.");
+        return;
+    }
+
+    let course =
+        document.getElementById("courseName")
+        .value
+        .trim();
+
+    if(course && !courses.includes(course)){
+
+        courses.push(course);
+
+        let li =
+            document.createElement("li");
+
+        li.innerText = course;
+
+        document
+        .getElementById("courseList")
+        .appendChild(li);
+
+        document
+        .getElementById("courseName")
+        .value = "";
+    }
+    else{
+        alert(
+        "Invalid! Insert a course first."
+        );
+    }
+}
+
+function addConflict(){
+
+    let c1 =
+        document.getElementById("course1")
+        .value
+        .trim();
+
+    let c2 =
+        document.getElementById("course2")
+        .value
+        .trim();
+
+    if(
+        c1 &&
+        c2 &&
+        courses.includes(c1) &&
+        courses.includes(c2)
+    ){
+
+        conflicts.push([c1,c2]);
+
+        let li =
+            document.createElement("li");
+
+        li.innerText =
+            c1 + " ↔ " + c2;
+
+        document
+        .getElementById("conflictList")
+        .appendChild(li);
+
+        document
+        .getElementById("course1")
+        .value = "";
+
+        document
+        .getElementById("course2")
+        .value = "";
+    }
+    else{
+        alert(
+        "Both courses must exist first."
+        );
+    }
+}
+
+function generateSchedule(){
+
+    let color = {};
+
+    for(let course of courses){
+
+        let usedColors = [];
+
+        for(let conflict of conflicts){
+
+            let neighbor = null;
+
+            if(conflict[0] === course)
+                neighbor = conflict[1];
+
+            else if(conflict[1] === course)
+                neighbor = conflict[0];
+
+            if(
+                neighbor &&
+                color[neighbor] !== undefined
+            ){
+                usedColors.push(
+                    color[neighbor]
+                );
+            }
+        }
+
+        let slot = 1;
+
+        while(
+            usedColors.includes(slot)
+        ){
+            slot++;
+        }
+
+        color[course] = slot;
+    }
+
+    let table =
+        document.getElementById(
+            "scheduleTable"
+        );
+
+    table.innerHTML =
+    `
+    <tr>
+        <th>Course</th>
+        <th>Time Slot</th>
+    </tr>
+    `;
+
+    for(let course of courses){
+
+        let row =
+            table.insertRow();
+
+        let c1 =
+            row.insertCell(0);
+
+        let c2 =
+            row.insertCell(1);
+
+        c1.innerText = course;
+        c2.innerText =
+            "Slot " + color[course];
+
+        let bg =
+        slotColors[
+            (color[course]-1)
+            %
+            slotColors.length
+        ];
+
+        c1.style.backgroundColor = bg;
+        c2.style.backgroundColor = bg;
+    }
+
+    drawGraph(color);
+}
+
+function drawGraph(colors){
+
+    const canvas =
+        document.getElementById(
+            "graphCanvas"
+        );
+
+    const ctx =
+        canvas.getContext("2d");
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    let positions = {};
+
+    let centerX =
+        canvas.width / 2;
+
+    let centerY =
+        canvas.height / 2;
+
+    let radius = 220;
+
+    for(
+        let i=0;
+        i<courses.length;
+        i++
+    ){
+
+        let angle =
+        (2 * Math.PI * i)
+        /
+        courses.length;
+
+        positions[courses[i]] = {
+
+            x:
+            centerX +
+            radius *
+            Math.cos(angle),
+
+            y:
+            centerY +
+            radius *
+            Math.sin(angle)
+        };
+    }
+
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 2;
+
+    for(let conflict of conflicts){
+
+        let p1 =
+            positions[
+                conflict[0]
+            ];
+
+        let p2 =
+            positions[
+                conflict[1]
+            ];
+
+        if(p1 && p2){
+
+            ctx.beginPath();
+
+            ctx.moveTo(
+                p1.x,
+                p1.y
+            );
+
+            ctx.lineTo(
+                p2.x,
+                p2.y
+            );
+
+            ctx.stroke();
+        }
+    }
+
+    for(let course of courses){
+
+        let p =
+            positions[course];
+
+        let nodeColor =
+        slotColors[
+            (colors[course]-1)
+            %
+            slotColors.length
+        ];
+
+        ctx.beginPath();
+
+        ctx.arc(
+            p.x,
+            p.y,
+            30,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle =
+            nodeColor;
+
+        ctx.fill();
+
+        ctx.stroke();
+
+        ctx.fillStyle =
+            "white";
+
+        ctx.font =
+            "bold 11px Arial";
+
+        ctx.textAlign =
+            "center";
+
+        ctx.fillText(
+            course,
+            p.x,
+            p.y + 5
+        );
+    }
+
+    createLegend(colors);
+}
+
+function createLegend(colors){
+
+    let legend =
+        document.getElementById(
+            "legend"
+        );
+
+    legend.innerHTML = "";
+
+    let slots =
+    [...new Set(
+        Object.values(colors)
+    )];
+
+    for(let slot of slots){
+
+        let item =
+            document.createElement(
+                "div"
+            );
+
+        item.style.display =
+            "inline-block";
+
+        item.style.margin =
+            "10px";
+
+        item.innerHTML =
+        `
+        <span
+        style="
+        display:inline-block;
+        width:20px;
+        height:20px;
+        background:
+        ${slotColors[(slot-1)%slotColors.length]};
+        border:1px solid white;
+        ">
+        </span>
+
+        Slot ${slot}
+        `;
+        legend.appendChild(item);
+    }
+}
+
+</script>
+
+</body>
+</html>
